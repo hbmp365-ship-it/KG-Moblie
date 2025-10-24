@@ -1,0 +1,14 @@
+# KG모빌리언스 설정
+# .dev.vars 파일로 복사하여 실제 값을 입력하세요
+# .dev.vars 파일은 .gitignore에 포함되어 있습니다
+
+# KG모빌리언스 상점 ID
+KG_MERCHANT_ID=TEST_MID
+
+# KG모빌리언스 상점 키 (암호화에 사용)
+KG_MERCHANT_KEY=TEST_KEY
+
+# API URL
+# 테스트계: https://testpay.kgmobilians.com
+# 운영계: https://pay.kgmobilians.com
+KG_API_URL=https://testpay.kgmobilians.com
