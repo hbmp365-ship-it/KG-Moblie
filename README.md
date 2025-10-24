@@ -1,12 +1,14 @@
 # KG모빌리언스 결제 시스템
 
-KG모빌리언스 PG사와 연동하여 다양한 결제 수단을 제공하는 Node.js 서버입니다.
+KG모빌리언스 PG사와 연동하여 다양한 결제 수단을 제공하는 통합 결제 솔루션입니다.
 
 ## 프로젝트 개요
 
 - **이름**: KG모빌리언스 결제 시스템
 - **목표**: 카드결제, 자동결제(빌링), URL결제, 가상계좌, 계좌이체 등 다양한 결제 수단 제공
-- **기술스택**: Hono + TypeScript + Cloudflare Pages
+- **구성**:
+  - **Server**: Hono + TypeScript + Cloudflare Pages (결제 API 서버)
+  - **Client**: React 19 + Vite (결제 웹 인터페이스)
 
 ## 주요 기능
 
@@ -265,25 +267,51 @@ npm run deploy:prod
 ## 프로젝트 구조
 
 ```
-webapp/
-├── src/
-│   ├── index.tsx              # 메인 애플리케이션 (UI 포함)
+KG-Moblie/
+├── src/                       # 서버 소스코드
+│   ├── index.tsx              # 메인 애플리케이션
 │   ├── lib/
 │   │   └── kgmobilians.ts     # KG모빌리언스 API 클라이언트
-│   └── routes/
-│       ├── card.ts            # 카드결제 라우터
-│       ├── billing.ts         # 자동결제 라우터
-│       ├── link.ts            # URL결제 라우터
-│       ├── vaccount.ts        # 가상계좌 라우터
-│       └── account.ts         # 계좌이체 라우터
+│   └── routes/                # API 라우터
+│       ├── card.ts            # 카드결제
+│       ├── billing.ts         # 자동결제
+│       ├── link.ts            # URL결제
+│       ├── vaccount.ts        # 가상계좌
+│       └── account.ts         # 계좌이체
+├── client/                    # React 클라이언트
+│   ├── src/
+│   │   ├── pages/             # 페이지 컴포넌트
+│   │   │   ├── Home.jsx
+│   │   │   ├── CardPayment.jsx
+│   │   │   ├── BillingPayment.jsx
+│   │   │   ├── LinkPayment.jsx
+│   │   │   ├── VirtualAccount.jsx
+│   │   │   └── AccountTransfer.jsx
+│   │   ├── services/
+│   │   │   └── api.js         # API 서비스 레이어
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── package.json
+│   └── README.md              # 클라이언트 상세 문서
 ├── .dev.vars.example          # 환경변수 예시
-├── .gitignore                 # Git 제외 파일
 ├── ecosystem.config.cjs       # PM2 설정
-├── package.json               # 의존성 및 스크립트
-├── tsconfig.json              # TypeScript 설정
-├── vite.config.ts             # Vite 빌드 설정
-└── wrangler.jsonc             # Cloudflare 설정
+├── package.json               # 서버 의존성
+└── README.md                  # 프로젝트 문서
 ```
+
+## 클라이언트 애플리케이션
+
+React 기반의 웹 클라이언트가 `client/` 폴더에 포함되어 있습니다.
+
+### 클라이언트 실행 방법
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+자세한 내용은 [client/README.md](client/README.md)를 참고하세요.
 
 ## 보안 고려사항
 
@@ -316,4 +344,7 @@ MIT
 
 **Last Updated**: 2024-10-24
 **Status**: ✅ Active
-**Tech Stack**: Hono + TypeScript + Cloudflare Pages + KG모빌리언스 PG
+**Tech Stack**: 
+- **Backend**: Hono + TypeScript + Cloudflare Pages
+- **Frontend**: React 19 + Vite + React Router
+- **PG**: KG모빌리언스
