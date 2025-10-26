@@ -11,12 +11,8 @@ function CardPayment() {
     buyerName: '홍길동',
     buyerEmail: 'test@example.com',
     buyerTel: '01012345678',
-    cardNumber: '1234567812345678',
-    cardExpiry: '2512',
-    cardPassword: '12',
-    cardIdNumber: '900101',
-    installment: '00',
-    returnUrl: window.location.origin + '/payment/result'
+    returnUrl: window.location.origin + '/payment/result',
+    cancelUrl: window.location.origin + '/payment/cancel'
   });
 
   const handleChange = (e) => {
@@ -31,7 +27,29 @@ function CardPayment() {
 
     try {
       const response = await cardPaymentAPI.pay(formData);
-      setResult({ success: true, data: response.data });
+      
+      if (response.data.success && response.data.data.paymentUrl) {
+        // 개발 환경에서는 결제창 시뮬레이션 (localhost, 로컬 IP 모두)
+        const isLocalDev = window.location.hostname === 'localhost' || 
+                          window.location.hostname === '127.0.0.1' ||
+                          window.location.hostname.startsWith('192.168.') ||
+                          window.location.hostname.startsWith('172.') ||
+                          window.location.hostname.startsWith('10.');
+        
+        if (isLocalDev) {
+          // localhost에서는 시뮬레이션 결과로 리다이렉트
+          const resultUrl = `${formData.returnUrl}?orderId=${formData.orderId}&status=success&amount=${formData.amount}&transactionId=TEST_${Date.now()}`;
+          window.location.href = resultUrl;
+        } else {
+          // 실제 환경에서는 KG모빌리언스 결제창으로 리다이렉트
+          window.location.href = response.data.data.paymentUrl;
+        }
+      } else {
+        setResult({ 
+          success: false, 
+          error: response.data.error || '결제창 생성에 실패했습니다.' 
+        });
+      }
     } catch (error) {
       setResult({ 
         success: false, 
@@ -65,7 +83,7 @@ function CardPayment() {
     <div className="page-container">
       <h1 className="page-title">💳 카드결제</h1>
       <p className="page-description">
-        신용카드 또는 체크카드로 즉시 결제할 수 있습니다.
+        KG모빌리언스 결제창을 통해 안전하게 결제할 수 있습니다. 카드 정보는 KG모빌리언스에서 안전하게 처리됩니다.
       </p>
 
       <form onSubmit={handleSubmit}>
@@ -150,82 +168,29 @@ function CardPayment() {
         </div>
 
         <div className="form-group">
-          <label>카드번호</label>
+          <label>결제 완료 후 이동할 URL</label>
           <input
-            type="text"
-            name="cardNumber"
-            value={formData.cardNumber}
+            type="url"
+            name="returnUrl"
+            value={formData.returnUrl}
             onChange={handleChange}
-            placeholder="1234567812345678"
-            maxLength="16"
+            placeholder="https://yoursite.com/payment/result"
             required
           />
-          <small>16자리 숫자 (하이픈 없이)</small>
+          <small>결제 완료 후 사용자가 돌아올 URL</small>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label>유효기간</label>
-            <input
-              type="text"
-              name="cardExpiry"
-              value={formData.cardExpiry}
-              onChange={handleChange}
-              placeholder="2512"
-              maxLength="4"
-              required
-            />
-            <small>YYMM 형식 (예: 2512)</small>
-          </div>
-
-          <div className="form-group">
-            <label>비밀번호 앞 2자리</label>
-            <input
-              type="password"
-              name="cardPassword"
-              value={formData.cardPassword}
-              onChange={handleChange}
-              maxLength="2"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>생년월일 / 사업자번호</label>
-            <input
-              type="text"
-              name="cardIdNumber"
-              value={formData.cardIdNumber}
-              onChange={handleChange}
-              placeholder="900101"
-              maxLength="10"
-              required
-            />
-            <small>생년월일 6자리 또는 사업자번호 10자리</small>
-          </div>
-
-          <div className="form-group">
-            <label>할부개월</label>
-            <select
-              name="installment"
-              value={formData.installment}
-              onChange={handleChange}
-              required
-            >
-              <option value="00">일시불</option>
-              <option value="02">2개월</option>
-              <option value="03">3개월</option>
-              <option value="04">4개월</option>
-              <option value="05">5개월</option>
-              <option value="06">6개월</option>
-              <option value="07">7개월</option>
-              <option value="08">8개월</option>
-              <option value="09">9개월</option>
-              <option value="10">10개월</option>
-              <option value="11">11개월</option>
-              <option value="12">12개월</option>
-            </select>
-          </div>
+        <div className="form-group">
+          <label>결제 취소 시 이동할 URL</label>
+          <input
+            type="url"
+            name="cancelUrl"
+            value={formData.cancelUrl}
+            onChange={handleChange}
+            placeholder="https://yoursite.com/payment/cancel"
+            required
+          />
+          <small>결제 취소 시 사용자가 돌아올 URL</small>
         </div>
 
         <div className="button-group">
@@ -237,10 +202,10 @@ function CardPayment() {
             {loading ? (
               <>
                 <div className="spinner"></div>
-                처리중...
+                결제창 생성중...
               </>
             ) : (
-              <>💳 결제하기</>
+              <>💳 결제창 열기</>
             )}
           </button>
 

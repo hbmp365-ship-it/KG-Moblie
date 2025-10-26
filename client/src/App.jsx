@@ -4,6 +4,7 @@ import BillingPayment from './pages/BillingPayment';
 import LinkPayment from './pages/LinkPayment';
 import VirtualAccount from './pages/VirtualAccount';
 import AccountTransfer from './pages/AccountTransfer';
+import PaymentResult from './pages/PaymentResult';
 import Home from './pages/Home';
 import './App.css';
 
@@ -34,6 +35,8 @@ function App() {
               <Route path="/link" element={<LinkPayment />} />
               <Route path="/vaccount" element={<VirtualAccount />} />
               <Route path="/account" element={<AccountTransfer />} />
+              <Route path="/payment/result" element={<PaymentResult />} />
+              <Route path="/payment/cancel" element={<PaymentResult />} />
             </Routes>
           </div>
         </main>

@@ -96,9 +96,17 @@ export class KGMobilians {
   }
 
   /**
-   * 카드 일반결제
+   * 카드 일반결제 (보안상 제거 - 결제창 방식 사용)
+   * @deprecated 보안상 위험하므로 createPaymentWindow 사용
    */
   async requestCardPayment(request: CardPaymentRequest): Promise<any> {
+    throw new Error('보안상 위험하므로 결제창 방식을 사용하세요. createPaymentWindow()를 사용하세요.');
+  }
+
+  /**
+   * 결제창 생성 (보안 방식)
+   */
+  async createPaymentWindow(request: PaymentRequest): Promise<any> {
     const timestamp = new Date().getTime().toString();
     const authKey = this.generateAuthKey(request.orderId, request.amount, timestamp);
 
@@ -110,17 +118,28 @@ export class KGMobilians {
       buyerName: request.buyerName,
       buyerEmail: request.buyerEmail,
       buyerTel: request.buyerTel,
-      cardNumber: request.cardNumber,
-      cardExpiry: request.cardExpiry,
-      cardPassword: request.cardPassword,
-      cardIdNumber: request.cardIdNumber,
-      installment: request.installment,
       timestamp: timestamp,
       authKey: authKey,
       returnUrl: request.returnUrl,
+      cancelUrl: request.cancelUrl,
     };
 
-    return await this.apiRequest('/api/card/pay', payload);
+    // 결제창 URL 생성
+    const params = new URLSearchParams();
+    Object.entries(payload).forEach(([key, value]) => {
+      params.append(key, value.toString());
+    });
+
+    const paymentUrl = `${this.config.apiUrl}/payment?${params.toString()}`;
+
+    return {
+      success: true,
+      data: {
+        paymentUrl: paymentUrl,
+        orderId: request.orderId,
+        message: '결제창 URL이 생성되었습니다.'
+      }
+    };
   }
 
   /**
