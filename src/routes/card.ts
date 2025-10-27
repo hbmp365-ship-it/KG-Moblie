@@ -29,22 +29,34 @@ card.post('/pay', async (c) => {
 
     // KG모빌리언스 설정 (환경변수에서 가져오기)
     const env = c.env as Env;
+    const clientOrigin = c.req.header('origin') || 'http://localhost:3001';
+    
+    console.log('환경변수 확인:', {
+      KG_SID: env?.KG_SID || '없음',
+      KG_MERCHANT_KEY: env?.KG_MERCHANT_KEY ? '설정됨' : '없음',
+      KG_API_URL: env?.KG_API_URL || '없음',
+      clientOrigin: clientOrigin
+    });
+    
     const kg = new KGMobilians({
-      merchantId: env?.KG_MERCHANT_ID || 'TEST_MID',
+      sid: env?.KG_SID || 'TEST_SID',
       merchantKey: env?.KG_MERCHANT_KEY || 'TEST_KEY',
-      apiUrl: env?.KG_API_URL || 'https://testpay.kgmobilians.com',
+      apiUrl: env?.KG_API_URL || 'https://test.mobilians.co.kr',
+      siteUrl: clientOrigin, // 클라이언트 Origin 사용
     });
 
-    // 결제창 URL 생성
-    const result = await kg.createPaymentWindow({
-      orderId: body.orderId,
+    // REST API 방식으로 결제창 생성
+    const result = await kg.registration({
+      tradeId: body.orderId,
       amount: Number(body.amount),
       productName: body.productName,
-      buyerName: body.buyerName,
-      buyerEmail: body.buyerEmail,
-      buyerTel: body.buyerTel,
-      returnUrl: body.returnUrl || `${c.req.header('origin')}/payment/result`,
-      cancelUrl: body.cancelUrl || `${c.req.header('origin')}/payment/cancel`,
+      userName: body.buyerName,
+      userEmail: body.buyerEmail,
+      okUrl: body.returnUrl || `${clientOrigin}/payment/result`,
+      closeUrl: body.cancelUrl || `${clientOrigin}/payment/cancel`,
+      cashCode: 'CN', // CN: 신용카드
+      callType: 'P',
+      hybridPay: 'N'
     });
 
     return c.json(result);
@@ -66,13 +78,17 @@ card.get('/status/:orderId', async (c) => {
 
     const env = c.env as Env;
     const kg = new KGMobilians({
-      merchantId: env?.KG_MERCHANT_ID || 'TEST_MID',
+      sid: env?.KG_SID || 'TEST_SID',
       merchantKey: env?.KG_MERCHANT_KEY || 'TEST_KEY',
-      apiUrl: env?.KG_API_URL || 'https://testpay.kgmobilians.com',
+      apiUrl: env?.KG_API_URL || 'https://test.mobilians.co.kr',
+      siteUrl: env?.KG_SITE_URL || 'http://localhost:3001',
     });
 
-    const result = await kg.getPaymentStatus(orderId);
-    return c.json(result);
+    // TODO: 결제 상태 조회 API 구현 필요
+    return c.json({
+      success: false,
+      error: '결제 상태 조회 API는 아직 구현되지 않았습니다.'
+    });
   } catch (error: any) {
     return c.json({
       success: false,
@@ -89,25 +105,33 @@ card.post('/cancel', async (c) => {
   try {
     const body = await c.req.json();
     
-    if (!body.orderId || !body.amount || !body.reason) {
+    if (!body.tradeId || !body.amount || !body.cashCode || !body.payToken) {
       return c.json({
         success: false,
-        error: 'orderId, amount, reason are required'
+        error: 'tradeId, amount, cashCode, payToken are required'
       }, 400);
     }
 
     const env = c.env as Env;
     const kg = new KGMobilians({
-      merchantId: env?.KG_MERCHANT_ID || 'TEST_MID',
+      sid: env?.KG_SID || 'TEST_SID',
       merchantKey: env?.KG_MERCHANT_KEY || 'TEST_KEY',
-      apiUrl: env?.KG_API_URL || 'https://testpay.kgmobilians.com',
+      apiUrl: env?.KG_API_URL || 'https://test.mobilians.co.kr',
+      siteUrl: env?.KG_SITE_URL || 'http://localhost:3001',
     });
 
-    const result = await kg.cancelPayment(
-      body.orderId,
-      Number(body.amount),
-      body.reason
-    );
+    const result = await kg.cancellation({
+      tradeId: body.tradeId,
+      cashCode: body.cashCode,
+      amount: Number(body.amount),
+      payToken: body.payToken,
+      cancelType: 'C',
+      partCancel: body.partCancel || 'N',
+      billType: body.billType,
+      tax: body.tax,
+      taxFree: body.taxFree,
+      taxAmount: body.taxAmount,
+    });
 
     return c.json(result);
   } catch (error: any) {

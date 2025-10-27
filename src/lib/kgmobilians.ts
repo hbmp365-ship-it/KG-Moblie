@@ -121,6 +121,11 @@ export class KGMobilians {
       if (request.userEmail) payload.user_email = request.userEmail;
       if (request.mstr) payload.mstr = request.mstr;
 
+      console.log('KG모빌리언스 거래 등록 요청:', {
+        url: `${this.config.apiUrl}/MUP/api/registration`,
+        payload: payload
+      });
+
       const response = await fetch(`${this.config.apiUrl}/MUP/api/registration`, {
         method: 'POST',
         headers: this.getHeaders(),
@@ -128,11 +133,17 @@ export class KGMobilians {
       });
 
       const data = await response.json();
+      
+      console.log('KG모빌리언스 거래 등록 응답:', {
+        status: response.status,
+        ok: response.ok,
+        data: data
+      });
 
       if (!response.ok || data.result_code !== '0000') {
         return {
           success: false,
-          error: data.result_msg || '거래 등록 실패',
+          error: `${data.result_msg || '거래 등록 실패'} (code: ${data.result_code})`,
         };
       }
 
@@ -145,6 +156,7 @@ export class KGMobilians {
         paymentUrl: paymentUrl,
       };
     } catch (error: any) {
+      console.error('KG모빌리언스 거래 등록 오류:', error);
       return {
         success: false,
         error: error.message,

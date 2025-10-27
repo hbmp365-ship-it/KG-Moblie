@@ -16,7 +16,33 @@ const app = new Hono();
 // 미들웨어 설정
 app.use('*', logger());
 app.use('*', prettyJSON());
-app.use('/api/*', cors());
+
+// CORS 설정 - 클라이언트 요청 허용
+app.use('*', cors({
+  origin: (origin) => {
+    // localhost 또는 ngrok URL 허용
+    const allowedOrigins = [
+      'http://localhost:3001',
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:5714',
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      return origin;
+    }
+    
+    // ngrok URL 허용
+    if (origin && origin.includes('ngrok-free.app')) {
+      return origin;
+    }
+    
+    return allowedOrigins[0]; // 기본값
+  },
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
 
 // API 라우터 등록
 app.route('/api/payment', payment);  // 통합 결제 API (권장)

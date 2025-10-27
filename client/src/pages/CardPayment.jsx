@@ -28,22 +28,40 @@ function CardPayment() {
     try {
       const response = await cardPaymentAPI.pay(formData);
       
-      if (response.data.success && response.data.data.paymentUrl) {
-        // 개발 환경에서는 결제창 시뮬레이션 (localhost, 로컬 IP 모두)
-        const isLocalDev = window.location.hostname === 'localhost' || 
-                          window.location.hostname === '127.0.0.1' ||
-                          window.location.hostname.startsWith('192.168.') ||
-                          window.location.hostname.startsWith('172.') ||
-                          window.location.hostname.startsWith('10.');
+      if (response.data.success && response.data.paymentUrl) {
+        // KG모빌리언스 결제창을 새창에서 열기
+        const paymentWindow = window.open(
+          response.data.paymentUrl,
+          'payment',
+          'width=800,height=600,scrollbars=yes,resizable=yes,top=100,left=100'
+        );
         
-        if (isLocalDev) {
-          // localhost에서는 시뮬레이션 결과로 리다이렉트
-          const resultUrl = `${formData.returnUrl}?orderId=${formData.orderId}&status=success&amount=${formData.amount}&transactionId=TEST_${Date.now()}`;
-          window.location.href = resultUrl;
-        } else {
-          // 실제 환경에서는 KG모빌리언스 결제창으로 리다이렉트
-          window.location.href = response.data.data.paymentUrl;
+        // 팝업이 차단되었는지 확인
+        if (!paymentWindow || paymentWindow.closed || typeof paymentWindow.closed === 'undefined') {
+          setResult({ 
+            success: false, 
+            error: '팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.',
+            paymentUrl: response.data.paymentUrl
+          });
+          return;
         }
+        
+        // 결제창이 닫혔는지 확인하는 함수
+        const checkClosed = setInterval(() => {
+          if (paymentWindow.closed) {
+            clearInterval(checkClosed);
+            setLoading(false);
+            // 결제창이 닫혔을 때 상태 조회
+            handleCheckStatus();
+          }
+        }, 1000);
+        
+        setResult({ 
+          success: true, 
+          message: 'KG모빌리언스 결제창이 새창에서 열렸습니다. 결제를 완료해주세요.',
+          paymentUrl: response.data.paymentUrl
+        });
+        
       } else {
         setResult({ 
           success: false, 
@@ -92,7 +110,7 @@ function CardPayment() {
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <input
               type="text"
-              name="orderId"
+              name="orderId"                                                                                                                                                                                                                                                                              
               value={formData.orderId}
               onChange={handleChange}
               required
@@ -223,7 +241,21 @@ function CardPayment() {
       {result && (
         <div className="result-box">
           <h3>{result.success ? '✅ 성공' : '❌ 실패'}</h3>
-          <pre>{JSON.stringify(result.success ? result.data : result.error, null, 2)}</pre>
+          {result.success && result.message && (
+            <div style={{ marginBottom: '1rem', padding: '1rem', backgroundColor: '#e8f5e8', borderRadius: '8px' }}>
+              <p style={{ margin: 0, color: '#2d5a2d' }}>{result.message}</p>
+              {result.paymentUrl && (
+                <button 
+                  onClick={() => window.open(result.paymentUrl, 'payment', 'width=800,height=600,scrollbars=yes,resizable=yes')}
+                  className="btn btn-primary"
+                  style={{ marginTop: '0.5rem' }}
+                >
+                  🔗 결제창 다시 열기
+                </button>
+              )}
+            </div>
+          )}
+          <pre>{JSON.stringify(result.success ? result : result.error, null, 2)}</pre>
         </div>
       )}
     </div>

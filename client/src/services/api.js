@@ -1,7 +1,16 @@
 import axios from 'axios';
 
 // API 기본 URL - 환경변수 또는 기본값 사용
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://3000-i4is9jhrgrp66tlakknoc-ad490db5.sandbox.novita.ai';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+
+// 환경변수 확인 로그
+console.log('API Base URL:', API_BASE_URL);
+console.log('Environment variables:', {
+  VITE_API_URL: import.meta.env.VITE_API_URL,
+  MODE: import.meta.env.MODE,
+  DEV: import.meta.env.DEV,
+  PROD: import.meta.env.PROD
+});
 
 // Axios 인스턴스 생성
 const api = axios.create({
