@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 
 // 라우터 import
+import payment from './routes/payment';
 import card from './routes/card';
 import billing from './routes/billing';
 import link from './routes/link';
@@ -18,11 +19,12 @@ app.use('*', prettyJSON());
 app.use('/api/*', cors());
 
 // API 라우터 등록
-app.route('/api/card', card);
-app.route('/api/billing', billing);
-app.route('/api/link', link);
-app.route('/api/vaccount', vaccount);
-app.route('/api/account', account);
+app.route('/api/payment', payment);  // 통합 결제 API (권장)
+app.route('/api/card', card);        // 레거시 카드결제 API
+app.route('/api/billing', billing);  // 레거시 빌링 API
+app.route('/api/link', link);        // 레거시 URL결제 API
+app.route('/api/vaccount', vaccount);// 레거시 가상계좌 API
+app.route('/api/account', account);  // 레거시 계좌이체 API
 
 // 메인 페이지 (결제 테스트 UI)
 app.get('/', (c) => {
@@ -43,13 +45,39 @@ app.get('/', (c) => {
             <div class="bg-white rounded-lg shadow-md p-6 mb-6">
                 <h1 class="text-3xl font-bold text-gray-800 flex items-center">
                     <i class="fas fa-credit-card mr-3 text-blue-600"></i>
-                    KG모빌리언스 결제 시스템
+                    KG모빌리언스 통합 결제 시스템
                 </h1>
-                <p class="text-gray-600 mt-2">카드결제, 자동결제, URL결제, 가상계좌, 계좌이체를 지원합니다.</p>
+                <p class="text-gray-600 mt-2">하나의 결제창에서 카드, 가상계좌, 계좌이체 등 모든 결제 수단을 지원합니다.</p>
+                <div class="mt-3 bg-blue-50 border-l-4 border-blue-500 p-3 text-sm text-blue-700">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    <strong>통합 결제창 방식:</strong> /api/payment/request로 거래 등록하면 사용자가 결제창에서 원하는 결제 수단을 선택할 수 있습니다.
+                </div>
             </div>
 
             <!-- API 엔드포인트 목록 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 통합 결제 (권장) -->
+                <div class="bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-md p-6 text-white col-span-2">
+                    <h2 class="text-2xl font-bold mb-4 flex items-center">
+                        <i class="fas fa-star mr-2"></i>
+                        통합 결제 API (권장)
+                    </h2>
+                    <div class="space-y-2 text-sm">
+                        <div class="bg-white bg-opacity-20 p-3 rounded">
+                            <span class="font-mono text-yellow-200">POST /api/payment/request</span>
+                            <p class="mt-1">거래 등록 및 결제창 URL 생성 (모든 결제 수단 지원)</p>
+                        </div>
+                        <div class="bg-white bg-opacity-20 p-3 rounded">
+                            <span class="font-mono text-yellow-200">POST /api/payment/approval</span>
+                            <p class="mt-1">결제 승인 (hybrid_pay='Y'인 경우)</p>
+                        </div>
+                        <div class="bg-white bg-opacity-20 p-3 rounded">
+                            <span class="font-mono text-yellow-200">POST /api/payment/cancel</span>
+                            <p class="mt-1">결제 취소</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 카드결제 -->
                 <div class="bg-white rounded-lg shadow-md p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
@@ -165,9 +193,10 @@ app.get('/', (c) => {
                         <h3 class="text-lg font-bold text-yellow-800 mb-2">환경변수 설정 필요</h3>
                         <p class="text-yellow-700 mb-2">다음 환경변수를 설정해야 합니다:</p>
                         <ul class="list-disc list-inside text-yellow-700 space-y-1">
-                            <li><code class="bg-yellow-100 px-2 py-1 rounded">KG_MERCHANT_ID</code> - KG모빌리언스 상점 ID</li>
+                            <li><code class="bg-yellow-100 px-2 py-1 rounded">KG_SID</code> - KG모빌리언스 서비스 ID (가맹점 코드)</li>
                             <li><code class="bg-yellow-100 px-2 py-1 rounded">KG_MERCHANT_KEY</code> - KG모빌리언스 상점 키</li>
-                            <li><code class="bg-yellow-100 px-2 py-1 rounded">KG_API_URL</code> - API URL (테스트계/운영계)</li>
+                            <li><code class="bg-yellow-100 px-2 py-1 rounded">KG_API_URL</code> - API URL (테스트: test.mobilians.co.kr, 운영: mup.mobilians.co.kr)</li>
+                            <li><code class="bg-yellow-100 px-2 py-1 rounded">KG_SITE_URL</code> - 가맹점 사이트 URL</li>
                         </ul>
                         <p class="text-yellow-700 mt-3">
                             <strong>로컬 개발:</strong> <code class="bg-yellow-100 px-2 py-1 rounded">.dev.vars</code> 파일에 설정<br>
@@ -187,12 +216,17 @@ app.get('/', (c) => {
                 <div class="mb-4">
                     <label class="block text-gray-700 font-medium mb-2">API 선택</label>
                     <select id="apiSelect" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        <option value="card">카드결제</option>
-                        <option value="billing-key">빌링키 발급</option>
-                        <option value="billing-pay">빌링 결제</option>
-                        <option value="link">URL 결제 링크</option>
-                        <option value="vaccount">가상계좌 발급</option>
-                        <option value="account">계좌이체</option>
+                        <option value="payment-unified">통합 결제 (권장)</option>
+                        <option value="payment-unified-card">통합 결제 - 카드만</option>
+                        <option value="payment-unified-va">통합 결제 - 가상계좌만</option>
+                        <option value="payment-cancel">결제 취소</option>
+                        <option disabled>--- 레거시 API ---</option>
+                        <option value="card">카드결제 (레거시)</option>
+                        <option value="billing-key">빌링키 발급 (레거시)</option>
+                        <option value="billing-pay">빌링 결제 (레거시)</option>
+                        <option value="link">URL 결제 링크 (레거시)</option>
+                        <option value="vaccount">가상계좌 발급 (레거시)</option>
+                        <option value="account">계좌이체 (레거시)</option>
                     </select>
                 </div>
 
@@ -217,6 +251,65 @@ app.get('/', (c) => {
     <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     <script>
         const apiExamples = {
+            'payment-unified': {
+                url: '/api/payment/request',
+                method: 'POST',
+                data: {
+                    tradeId: 'TRD' + Date.now(),
+                    amount: 10000,
+                    productName: '테스트 상품',
+                    userName: '홍길동',
+                    userEmail: 'test@example.com',
+                    okUrl: window.location.origin + '/api/payment/result',
+                    closeUrl: window.location.origin + '/payment/cancel',
+                    failUrl: window.location.origin + '/payment/fail',
+                    callType: 'P',
+                    hybridPay: 'N'
+                }
+            },
+            'payment-unified-card': {
+                url: '/api/payment/request',
+                method: 'POST',
+                data: {
+                    tradeId: 'TRD' + Date.now(),
+                    amount: 10000,
+                    productName: '테스트 상품',
+                    userName: '홍길동',
+                    userEmail: 'test@example.com',
+                    okUrl: window.location.origin + '/api/payment/result',
+                    cashCode: 'CN',
+                    callType: 'P',
+                    hybridPay: 'N'
+                }
+            },
+            'payment-unified-va': {
+                url: '/api/payment/request',
+                method: 'POST',
+                data: {
+                    tradeId: 'TRD' + Date.now(),
+                    amount: 10000,
+                    productName: '테스트 상품',
+                    userName: '홍길동',
+                    userEmail: 'test@example.com',
+                    okUrl: window.location.origin + '/api/payment/result',
+                    notiUrl: window.location.origin + '/api/payment/webhook',
+                    cashCode: 'VA',
+                    callType: 'P',
+                    hybridPay: 'N'
+                }
+            },
+            'payment-cancel': {
+                url: '/api/payment/cancel',
+                method: 'POST',
+                data: {
+                    tradeId: 'TRD1234567890',
+                    cashCode: 'CN',
+                    amount: 10000,
+                    payToken: 'PAY_TOKEN_HERE',
+                    cancelType: 'C',
+                    partCancel: 'N'
+                }
+            },
             card: {
                 url: '/api/card/pay',
                 method: 'POST',
@@ -317,7 +410,7 @@ app.get('/', (c) => {
         });
 
         // 초기값 설정
-        document.getElementById('requestData').value = JSON.stringify(apiExamples.card.data, null, 2);
+        document.getElementById('requestData').value = JSON.stringify(apiExamples['payment-unified'].data, null, 2);
 
         async function sendRequest() {
             const apiType = document.getElementById('apiSelect').value;
