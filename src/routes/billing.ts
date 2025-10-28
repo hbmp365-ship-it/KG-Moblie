@@ -32,20 +32,20 @@ billing.post('/key', async (c) => {
     const clientOrigin = c.req.header('origin') || 'http://localhost:3001';
     
     console.log('빌링키 발급 환경변수 확인:', {
-      KG_SID: env?.KG_SID || '없음',
+      KG_SID: env?.KG_AUTO_SERVICE_ID || '없음',
       KG_MERCHANT_KEY: env?.KG_MERCHANT_KEY ? '설정됨' : '없음',
       KG_API_URL: env?.KG_API_URL || '없음',
       clientOrigin: clientOrigin
     });
     
     const kg = new KGMobilians({
-      sid: env?.KG_SID || 'TEST_SID',
+      sid: env?.KG_AUTO_SERVICE_ID || 'TEST_SID',
       merchantKey: env?.KG_MERCHANT_KEY || 'TEST_KEY',
       apiUrl: env?.KG_API_URL || 'https://test.mobilians.co.kr',
       siteUrl: env?.KG_SITE_URL || 'http://localhost:3001',
     });
 
-    // 빌링키 발급을 위한 거래 등록 (자동결제용)
+    // 빌링키 발급을 위한 거래 등록 (카드결제와 동일한 방식)
     const result = await kg.registration({
       // 필수 필드 (Y)
       tradeId: body.orderId,                    // 가맹점 거래번호 (40자)
@@ -54,17 +54,13 @@ billing.post('/key', async (c) => {
       siteUrl: env?.KG_SITE_URL || 'http://localhost:3001', // 환경변수에서 가져오기 (20자)
       okUrl: body.returnUrl || `${clientOrigin}/payment/result`, // 결제 완료 URL (128자)
       
-      // 선택적 필드 (N) - 빌링키 발급용
+      // 선택적 필드 (N) - 카드결제와 동일
       cashCode: 'CN',                         // 결제 수단: CN(신용카드)
       callType: 'P',                          // P: popup, S: self, I: iframe
       hybridPay: 'N',                         // N: 인증+승인, Y: 인증만
       closeUrl: body.cancelUrl || `${clientOrigin}/payment/cancel`, // 취소 URL (128자)
       userName: body.buyerName,               // 사용자 이름 (50자)
       userEmail: body.buyerEmail,             // 사용자 이메일 (30자)
-      
-      // 빌링키 발급을 위한 추가 설정
-      onlyOnce: 'N',                          // N: 다건 결제 (빌링키 발급)
-      mstr: `billingKey=true|orderId=${body.orderId}`, // 빌링키 발급 표시
     });
 
     return c.json(result);
@@ -104,13 +100,13 @@ billing.post('/pay', async (c) => {
     const clientOrigin = c.req.header('origin') || 'http://localhost:3001';
     
     const kg = new KGMobilians({
-      sid: env?.KG_SID || 'TEST_SID',
+      sid: env?.KG_AUTO_SERVICE_ID || 'TEST_SID',
       merchantKey: env?.KG_MERCHANT_KEY || 'TEST_KEY',
       apiUrl: env?.KG_API_URL || 'https://test.mobilians.co.kr',
       siteUrl: env?.KG_SITE_URL || 'http://localhost:3001',
     });
 
-    // 빌링키로 결제를 위한 거래 등록
+    // 빌링키로 결제를 위한 거래 등록 (카드결제와 동일한 방식)
     const result = await kg.registration({
       // 필수 필드 (Y)
       tradeId: body.orderId,                    // 가맹점 거래번호 (40자)
@@ -119,17 +115,13 @@ billing.post('/pay', async (c) => {
       siteUrl: env?.KG_SITE_URL || 'http://localhost:3001', // 환경변수에서 가져오기 (20자)
       okUrl: body.returnUrl || `${clientOrigin}/payment/result`, // 결제 완료 URL (128자)
       
-      // 선택적 필드 (N) - 빌링키 결제용
+      // 선택적 필드 (N) - 카드결제와 동일
       cashCode: 'CN',                         // 결제 수단: CN(신용카드)
       callType: 'P',                          // P: popup, S: self, I: iframe
       hybridPay: 'N',                         // N: 인증+승인, Y: 인증만
       closeUrl: body.cancelUrl || `${clientOrigin}/payment/cancel`, // 취소 URL (128자)
       userName: body.buyerName,               // 사용자 이름 (50자)
       userEmail: body.buyerEmail,             // 사용자 이메일 (30자)
-      
-      // 빌링키 결제를 위한 추가 설정
-      onlyOnce: 'Y',                          // Y: 단건 결제 (빌링키 사용)
-      mstr: `billingKey=${body.billingKey}|orderId=${body.orderId}`, // 빌링키 정보
     });
 
     return c.json(result);

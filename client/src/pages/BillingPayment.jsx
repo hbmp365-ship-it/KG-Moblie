@@ -21,7 +21,7 @@ function BillingPayment() {
   const [paymentData, setPaymentData] = useState({
     billingKey: '',
     orderId: 'AUTO' + Date.now(),
-    amount: '10000',
+    amount: '1000',
     productName: '정기결제 상품',
     buyerName: '홍길동',
     buyerEmail: 'test@example.com'
@@ -155,6 +155,11 @@ function BillingPayment() {
     }
   };
 
+  const handleCheckStatus = () => {
+    // 결제창이 닫힌 후 상태 확인 (필요시 구현)
+    console.log('결제창이 닫혔습니다. 상태를 확인합니다.');
+  };
+
   const handleDelete = async () => {
     if (!billingKey) {
       setResult({ success: false, error: '빌링키를 입력하세요.' });
@@ -220,56 +225,25 @@ function BillingPayment() {
           </div>
 
           <div className="form-group">
-            <label>카드번호</label>
+            <label>결제금액</label>
             <input
-              type="text"
-              name="cardNumber"
-              value={registerData.cardNumber}
+              type="number"
+              name="amount"
+              value={registerData.amount}
               onChange={handleRegisterChange}
-              placeholder="1234567812345678"
-              maxLength="16"
               required
             />
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>유효기간</label>
-              <input
-                type="text"
-                name="cardExpiry"
-                value={registerData.cardExpiry}
-                onChange={handleRegisterChange}
-                placeholder="2512"
-                maxLength="4"
-                required
-              />
-              <small>YYMM 형식</small>
-            </div>
-
-            <div className="form-group">
-              <label>비밀번호 앞 2자리</label>
-              <input
-                type="password"
-                name="cardPassword"
-                value={registerData.cardPassword}
-                onChange={handleRegisterChange}
-                maxLength="2"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>생년월일 / 사업자번호</label>
-              <input
-                type="text"
-                name="cardIdNumber"
-                value={registerData.cardIdNumber}
-                onChange={handleRegisterChange}
-                placeholder="900101"
-                required
-              />
-            </div>
+          <div className="form-group">
+            <label>상품명</label>
+            <input
+              type="text"
+              name="productName"
+              value={registerData.productName}
+              onChange={handleRegisterChange}
+              required
+            />
           </div>
 
           <div className="form-row">
@@ -305,6 +279,19 @@ function BillingPayment() {
                 required
               />
             </div>
+          </div>
+
+          <div className="info-box" style={{ 
+            background: '#e3f2fd', 
+            border: '1px solid #2196f3', 
+            borderRadius: '8px', 
+            padding: '16px', 
+            marginBottom: '20px' 
+          }}>
+            <h4 style={{ margin: '0 0 8px 0', color: '#1976d2' }}>💡 빌링키 발급 안내</h4>
+            <p style={{ margin: '0', color: '#1976d2' }}>
+              빌링키 발급을 위해 카드 정보는 KG모빌리언스 결제창에서 안전하게 입력하시면 됩니다.
+            </p>
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
