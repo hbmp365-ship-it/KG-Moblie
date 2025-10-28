@@ -9,13 +9,13 @@ function BillingPayment() {
 
   const [registerData, setRegisterData] = useState({
     orderId: 'BILL' + Date.now(),
-    cardNumber: '1234567812345678',
-    cardExpiry: '2512',
-    cardPassword: '12',
-    cardIdNumber: '900101',
-    buyerName: '홍길동',
-    buyerEmail: 'test@example.com',
-    buyerTel: '01012345678'
+    amount: '1000',
+    productName: '빌링키 발급 테스트',
+    buyerName: '서준호',
+    buyerEmail: 'slslcx@daum.net',
+    buyerTel: '01082556595',
+    returnUrl: 'https://d98f9219293d.ngrok-free.app/payment/result',
+    cancelUrl: 'https://d98f9219293d.ngrok-free.app/payment/cancel'
   });
 
   const [paymentData, setPaymentData] = useState({
@@ -44,12 +44,47 @@ function BillingPayment() {
 
     try {
       const response = await billingAPI.requestKey(registerData);
-      setResult({ success: true, data: response.data });
       
-      // 빌링키가 발급되면 자동으로 저장
-      if (response.data.data?.billingKey) {
-        setBillingKey(response.data.data.billingKey);
-        setPaymentData(prev => ({ ...prev, billingKey: response.data.data.billingKey }));
+      if (response.data.success && (response.data.paymentUrl || response.data.pay_url)) {
+        // KG모빌리언스 빌링키 발급 결제창을 새창에서 열기
+        const paymentUrl = response.data.paymentUrl || response.data.pay_url;
+        const paymentWindow = window.open(
+          paymentUrl,
+          'billing',
+          'width=800,height=600,scrollbars=yes,resizable=yes,top=100,left=100'
+        );
+        
+        // 팝업이 차단되었는지 확인
+        if (!paymentWindow || paymentWindow.closed || typeof paymentWindow.closed === 'undefined') {
+          setResult({ 
+            success: false, 
+            error: '팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.',
+            paymentUrl: paymentUrl
+          });
+          return;
+        }
+        
+        // 결제창이 닫혔는지 확인하는 함수
+        const checkClosed = setInterval(() => {
+          if (paymentWindow.closed) {
+            clearInterval(checkClosed);
+            setLoading(false);
+            // 결제창이 닫혔을 때 상태 조회
+            handleCheckStatus();
+          }
+        }, 1000);
+        
+        setResult({ 
+          success: true, 
+          message: 'KG모빌리언스 빌링키 발급 결제창이 새창에서 열렸습니다. 카드 정보를 입력하여 빌링키를 발급받아주세요.',
+          paymentUrl: paymentUrl
+        });
+        
+      } else {
+        setResult({ 
+          success: false, 
+          error: response.data.error || '빌링키 발급 결제창 생성에 실패했습니다.' 
+        });
       }
     } catch (error) {
       setResult({ 
@@ -68,7 +103,48 @@ function BillingPayment() {
 
     try {
       const response = await billingAPI.pay(paymentData);
-      setResult({ success: true, data: response.data });
+      
+      if (response.data.success && (response.data.paymentUrl || response.data.pay_url)) {
+        // KG모빌리언스 빌링키 결제창을 새창에서 열기
+        const paymentUrl = response.data.paymentUrl || response.data.pay_url;
+        const paymentWindow = window.open(
+          paymentUrl,
+          'billing-pay',
+          'width=800,height=600,scrollbars=yes,resizable=yes,top=100,left=100'
+        );
+        
+        // 팝업이 차단되었는지 확인
+        if (!paymentWindow || paymentWindow.closed || typeof paymentWindow.closed === 'undefined') {
+          setResult({ 
+            success: false, 
+            error: '팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.',
+            paymentUrl: paymentUrl
+          });
+          return;
+        }
+        
+        // 결제창이 닫혔는지 확인하는 함수
+        const checkClosed = setInterval(() => {
+          if (paymentWindow.closed) {
+            clearInterval(checkClosed);
+            setLoading(false);
+            // 결제창이 닫혔을 때 상태 조회
+            handleCheckStatus();
+          }
+        }, 1000);
+        
+        setResult({ 
+          success: true, 
+          message: 'KG모빌리언스 빌링키 결제창이 새창에서 열렸습니다. 빌링키로 결제를 진행해주세요.',
+          paymentUrl: paymentUrl
+        });
+        
+      } else {
+        setResult({ 
+          success: false, 
+          error: response.data.error || '빌링키 결제창 생성에 실패했습니다.' 
+        });
+      }
     } catch (error) {
       setResult({ 
         success: false, 

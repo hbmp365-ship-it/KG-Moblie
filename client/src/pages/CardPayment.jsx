@@ -6,13 +6,13 @@ function CardPayment() {
   const [result, setResult] = useState(null);
   const [formData, setFormData] = useState({
     orderId: 'ORD' + Date.now(),
-    amount: '10000',
+    amount: '1000',
     productName: '테스트 상품',
-    buyerName: '홍길동',
-    buyerEmail: 'test@example.com',
-    buyerTel: '01012345678',
-    returnUrl: window.location.origin + '/payment/result',
-    cancelUrl: window.location.origin + '/payment/cancel'
+    buyerName: '서준호',
+    buyerEmail: 'slslcx@daum.net',
+    buyerTel: '01082556595',
+    returnUrl: 'https://d98f9219293d.ngrok-free.app/payment/result',
+    cancelUrl: 'https://d98f9219293d.ngrok-free.app/payment/cancel'
   });
 
   const handleChange = (e) => {
@@ -28,10 +28,11 @@ function CardPayment() {
     try {
       const response = await cardPaymentAPI.pay(formData);
       
-      if (response.data.success && response.data.paymentUrl) {
+      if (response.data.success && (response.data.paymentUrl || response.data.pay_url)) {
         // KG모빌리언스 결제창을 새창에서 열기
+        const paymentUrl = response.data.paymentUrl || response.data.pay_url;
         const paymentWindow = window.open(
-          response.data.paymentUrl,
+          paymentUrl,
           'payment',
           'width=800,height=600,scrollbars=yes,resizable=yes,top=100,left=100'
         );
@@ -41,7 +42,7 @@ function CardPayment() {
           setResult({ 
             success: false, 
             error: '팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.',
-            paymentUrl: response.data.paymentUrl
+            paymentUrl: paymentUrl
           });
           return;
         }
@@ -59,7 +60,7 @@ function CardPayment() {
         setResult({ 
           success: true, 
           message: 'KG모빌리언스 결제창이 새창에서 열렸습니다. 결제를 완료해주세요.',
-          paymentUrl: response.data.paymentUrl
+          paymentUrl: paymentUrl
         });
         
       } else {

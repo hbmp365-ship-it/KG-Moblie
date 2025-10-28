@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
+import { KGMobilians } from './lib/kgmobilians';
+import { Env } from './types/env';
 
 // 라우터 import
 import payment from './routes/payment';
@@ -43,6 +45,260 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
+// 결제 승인 결과: {
+//     success: true,
+//     data: {
+//       code: 'M681',
+//       message: '중복거래가 존재 합니다.',
+//       sid: '210129097386',
+//       tid: '2037bd4c41fb099f8',
+//       sign_date: '20251028143120',
+//       trade_id: 'ORD1761629458121',
+//       mobil_id: '',
+//       cash_code: 'CN',
+//       pay_token: '251028000272422',
+//       product_name: '테스트 상품',
+//       amount: '1000',
+//       cn_installment: '00',
+//       cn_card_no: '',
+//       cn_card_code: '',
+//       cn_card_name: '',
+//       cn_appr_no: '',
+//       cn_bill_key: '',
+//       cn_coupon_price: '',
+//       cn_pay_method: '',
+//       cn_bill_yn: '',
+//       cn_point_appr_no: '',
+//       hmac: 'h3HAM/JrdQ+XLGajZIwmWWSrHbVgXQr9vTN4u1gvSxc=',
+//       deposit: '',
+//       transaction_id: ''
+//     }
+//   }
+
+// 결제 완료 후 리다이렉트 처리 (루트 경로)
+// GET과 POST 모두 처리 (KG모빌리언스가 POST로 전송할 수 있음)
+app.all('/payment/result', async (c) => {
+  try {
+    const method = c.req.method;
+    const query = c.req.query();
+    const url = c.req.url;
+    
+    console.log('결제 완료 리다이렉트 수신:');
+    console.log('- Method:', method);
+    console.log('- URL:', url);
+    console.log('- Query:', query);
+    console.log('- Query Keys:', Object.keys(query));
+    
+    let paymentData = {};
+    
+    // POST 요청인 경우 body에서 데이터 추출
+    if (method === 'POST') {
+      try {
+        // 먼저 form data로 시도 (KG모빌리언스가 주로 사용)
+        const formData = await c.req.parseBody();
+        console.log('- POST FormData:', formData);
+        paymentData = formData;
+      } catch (formError) {
+        // form data 파싱 실패 시 JSON으로 시도
+        try {
+          const body = await c.req.json();
+          console.log('- POST Body (JSON):', body);
+          paymentData = body;
+        } catch (jsonError) {
+          console.log('- POST Body 파싱 실패:', formError.message);
+          console.log('- JSON 파싱도 실패:', jsonError.message);
+          
+          // Raw body 확인
+          try {
+            const rawBody = await c.req.text();
+            console.log('- Raw Body:', rawBody);
+            
+            // URL encoded 형태인지 확인하고 파싱
+            if (rawBody.includes('=')) {
+              const urlParams = new URLSearchParams(rawBody);
+              paymentData = Object.fromEntries(urlParams.entries());
+              console.log('- Parsed URL Params:', paymentData);
+            }
+          } catch (textError) {
+            console.log('- Raw body 읽기 실패:', textError.message);
+          }
+        }
+      }
+    }
+    
+    // 결제 결과 파라미터 확인 (query 또는 body에서)
+    const { tid, pay_token, cash_code, amount, result_code, result_msg } = {
+      ...query,
+      ...paymentData
+    };
+    
+    // 파라미터가 없으면 URL에서 직접 파싱 시도
+    if (!tid && !pay_token) {
+      console.log('Query 파라미터가 없음. URL 파싱 시도...');
+      
+      // URL에서 파라미터 추출
+      const urlObj = new URL(url);
+      const searchParams = urlObj.searchParams;
+      
+      console.log('URL SearchParams:', Object.fromEntries(searchParams.entries()));
+      
+      // 필수 파라미터가 여전히 없으면 오류 페이지 표시
+      if (!searchParams.get('tid') && !searchParams.get('pay_token')) {
+        return c.html(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>결제 오류</title>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              .error { color: red; }
+              .debug { background: #f0f0f0; padding: 20px; margin: 20px 0; border-radius: 5px; text-align: left; }
+            </style>
+          </head>
+          <body>
+            <h1 class="error">❌ 결제 오류</h1>
+            <p>필수 파라미터가 누락되었습니다.</p>
+            <div class="debug">
+              <h3>디버그 정보:</h3>
+              <p><strong>Method:</strong> ${method}</p>
+              <p><strong>URL:</strong> ${url}</p>
+              <p><strong>Query:</strong> ${JSON.stringify(query)}</p>
+              <p><strong>Payment Data:</strong> ${JSON.stringify(paymentData)}</p>
+              <p><strong>Expected:</strong> tid, pay_token 파라미터 필요</p>
+            </div>
+            <p>이 창은 자동으로 닫힙니다.</p>
+            <script>
+              setTimeout(() => {
+                window.close();
+              }, 5000);
+            </script>
+          </body>
+          </html>
+        `);
+      }
+    }
+    
+    // 결제 승인 처리 (3단계)
+    const env = c.env as Env;
+    const kg = new KGMobilians({
+      sid: env?.KG_SID || 'TEST_SID',
+      merchantKey: env?.KG_MERCHANT_KEY || 'TEST_KEY',
+      apiUrl: env?.KG_API_URL || 'https://test.mobilians.co.kr',
+      siteUrl: env?.KG_SITE_URL || 'http://localhost:3001',
+    });
+    
+    const approvalResult = await kg.approval({
+      tid: tid,
+      cashCode: cash_code || 'CN',
+      amount: Number(amount),
+      payToken: pay_token,
+    });
+    
+    console.log('결제 승인 결과:', approvalResult);
+    
+    if (approvalResult.success) {
+      return c.html(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>결제 완료</title>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+            .success { color: green; }
+            .info { background: #f0f0f0; padding: 20px; margin: 20px 0; border-radius: 5px; }
+          </style>
+        </head>
+        <body>
+          <h1 class="success">✅ 결제가 완료되었습니다!</h1>
+          <div class="info">
+            <p><strong>거래번호:</strong> ${tid}</p>
+            <p><strong>결제금액:</strong> ${Number(amount).toLocaleString()}원</p>
+            <p><strong>결제수단:</strong> ${cash_code === 'CN' ? '신용카드' : cash_code}</p>
+            <p><strong>결과:</strong> ${result_msg || '성공'}</p>
+          </div>
+          <p>이 창은 자동으로 닫힙니다.</p>
+          <script>
+            setTimeout(() => {
+              window.close();
+            }, 3000);
+          </script>
+        </body>
+        </html>
+      `);
+    } else {
+      return c.html(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>결제 실패</title></head>
+        <body>
+          <h1>결제 승인 실패</h1>
+          <p>${approvalResult.error}</p>
+          <script>window.close();</script>
+        </body>
+        </html>
+      `);
+    }
+  } catch (error: any) {
+    console.error('결제 완료 처리 오류:', error);
+    return c.html(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>처리 오류</title></head>
+      <body>
+        <h1>처리 중 오류가 발생했습니다.</h1>
+        <p>${error.message}</p>
+        <script>window.close();</script>
+      </body>
+      </html>
+    `);
+  }
+});
+
+app.get('/payment/cancel', async (c) => {
+  try {
+    const query = c.req.query();
+    
+    console.log('결제 취소 리다이렉트 수신:', query);
+    
+    return c.html(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>결제 취소</title>
+        <meta charset="UTF-8">
+        <style>
+          body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+          .cancel { color: orange; }
+        </style>
+      </head>
+      <body>
+        <h1 class="cancel">❌ 결제가 취소되었습니다.</h1>
+        <p>사용자가 결제를 취소했습니다.</p>
+        <p>이 창은 자동으로 닫힙니다.</p>
+        <script>
+          setTimeout(() => {
+            window.close();
+          }, 3000);
+        </script>
+      </body>
+      </html>
+    `);
+  } catch (error: any) {
+    return c.html(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>처리 오류</title></head>
+      <body>
+        <h1>처리 중 오류가 발생했습니다.</h1>
+        <p>${error.message}</p>
+        <script>window.close();</script>
+      </body>
+      </html>
+    `);
+  }
+});
 
 // API 라우터 등록
 app.route('/api/payment', payment);  // 통합 결제 API (권장)

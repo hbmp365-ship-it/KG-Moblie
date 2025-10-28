@@ -167,20 +167,24 @@ export class KGMobilians {
         data: data
       });
 
-      if (!response.ok || data.result_code !== '0000') {
+      if (!response.ok || (data.result_code !== '0000' && data.code !== '0000')) {
         return {
           success: false,
-          error: `${data.result_msg || '거래 등록 실패'} (code: ${data.result_code})`,
+          error: `${data.result_msg || data.message || '거래 등록 실패'} (code: ${data.result_code || data.code})`,
         };
       }
 
-      // 결제창 URL 생성
-      const paymentUrl = `${this.config.apiUrl}/MUP/api/payment.mcash?tid=${data.tid}`;
+      // 결제창 URL 생성 (API 응답의 pay_url 우선 사용)
+      const paymentUrl = data.pay_url || `${this.config.apiUrl}/MUP/api/payment.mcash?tid=${data.tid}`;
       
       return {
         success: true,
         tid: data.tid,
         paymentUrl: paymentUrl,
+        pay_url: data.pay_url, // 원본 pay_url도 포함
+        qrcode_url: data.qrcode_url,
+        hmac: data.hmac,
+        time_stamp: data.time_stamp,
       };
     } catch (error: any) {
       console.error('KG모빌리언스 거래 등록 오류:', error);

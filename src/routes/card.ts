@@ -56,6 +56,7 @@ card.post('/pay', async (c) => {
       okUrl: body.returnUrl || `${clientOrigin}/payment/result`, // 결제 완료 URL (128자)
       
       // 선택적 필드 (N) - 카드결제에 필요한 것들만
+      // cashCode: 'CN',                         // 결제 수단: CN(신용카드)
       cashCode: 'CN',                         // 결제 수단: CN(신용카드)
       callType: 'P',                          // P: popup, S: self, I: iframe
       hybridPay: 'N',                         // N: 인증+승인, Y: 인증만
