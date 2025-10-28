@@ -42,22 +42,45 @@ card.post('/pay', async (c) => {
       sid: env?.KG_SID || 'TEST_SID',
       merchantKey: env?.KG_MERCHANT_KEY || 'TEST_KEY',
       apiUrl: env?.KG_API_URL || 'https://test.mobilians.co.kr',
-      siteUrl: clientOrigin, // 클라이언트 Origin 사용
+      siteUrl: env?.KG_SITE_URL || 'http://localhost:3001', // 환경변수에서 가져오기
     });
 
+    console.log('siteUrl:', env?.KG_SITE_URL || 'http://localhost:3001');
     // REST API 방식으로 결제창 생성
     const result = await kg.registration({
-      tradeId: body.orderId,
-      amount: Number(body.amount),
-      productName: body.productName,
-      userName: body.buyerName,
-      userEmail: body.buyerEmail,
-      okUrl: body.returnUrl || `${clientOrigin}/payment/result`,
-      closeUrl: body.cancelUrl || `${clientOrigin}/payment/cancel`,
-      cashCode: 'CN', // CN: 신용카드
-      callType: 'P',
-      hybridPay: 'N'
+      // 필수 필드 (Y)
+      tradeId: body.orderId,                    // 가맹점 거래번호 (40자)
+      productName: body.productName,            // 상품명 (50자)
+      amount: Number(body.amount),              // 총 결제 금액
+      siteUrl: env?.KG_SITE_URL || 'http://localhost:3001', // 환경변수에서 가져오기 (20자)
+      okUrl: body.returnUrl || `${clientOrigin}/payment/result`, // 결제 완료 URL (128자)
+      
+      // 선택적 필드 (N) - 카드결제에 필요한 것들만
+      cashCode: 'CN',                         // 결제 수단: CN(신용카드)
+      callType: 'P',                          // P: popup, S: self, I: iframe
+      hybridPay: 'N',                         // N: 인증+승인, Y: 인증만
+      closeUrl: body.cancelUrl || `${clientOrigin}/payment/cancel`, // 취소 URL (128자)
+      userName: body.buyerName,               // 사용자 이름 (50자)
+      userEmail: body.buyerEmail,             // 사용자 이메일 (30자)
+      
+      // 선택적 필드 (N) - 주석 처리 (필요시 활성화)
+      // notiUrl: `${clientOrigin}/api/card/webhook`, // 결제 결과 노티 URL (128자)
+      // notiEmail: 'admin@example.com',              // 담당자 이메일 (30자)
+      // failUrl: `${clientOrigin}/payment/fail`,      // 결제 실패 URL (128자)
+      // userId: 'user123',                           // 사용자 ID (50자)
+      // businessNo: '1234567890123',                 // 사업자번호 (13자)
+      // sellerTel: '01012345678',                    // 판매자 전화번호 (15자)
+      // sellerName: '판매자명',                       // 판매자명 (50자)
+      // onlyOnce: 'Y',                               // 반복결제 설정: Y(단건), N(다건)
+      // timeStamp: '20250101120000',                 // 유효시간 (14자)
+      // mstr: 'orderId=123|userId=456',              // 가맹점 콜백 변수 (2000자)
+      // cpLogo: 'N',                                // 가맹점 로고 표기: Y/N
+      // cssType: '#006EB9',                         // 결제창 색상 (7자)
+      // cpUi: 'custom_ui',                          // 가맹점별 UI 설정 (20자)
+      // appScheme: 'myapp://',                       // APP URL Scheme (50자)
     });
+
+    
 
     return c.json(result);
   } catch (error: any) {

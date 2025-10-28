@@ -14,19 +14,34 @@ export interface KGConfig {
 
 // 거래 등록 요청
 export interface RegistrationRequest {
-  tradeId: string;         // 가맹점 거래번호
-  amount: number;          // 결제금액
-  productName: string;     // 상품명
-  userName: string;        // 구매자명
-  userEmail?: string;      // 구매자 이메일
-  okUrl: string;           // 결제(인증) 결과 처리 URL
-  closeUrl?: string;       // 취소 버튼 클릭 redirect URL
-  failUrl?: string;        // 결제 실패 redirect URL
-  notiUrl?: string;        // 결제 결과 노티 URL (가상계좌 필수)
-  cashCode?: string;       // 결제 수단 (CN:카드, VA:가상계좌 등)
-  callType?: 'P' | 'S' | 'I'; // P:popup(기본), S:self, I:iframe
-  hybridPay?: 'Y' | 'N';   // Y:인증만, N:인증+승인(기본)
-  mstr?: string;           // 가맹점 콜백 변수
+  // 필수 필드 (Y)
+  tradeId: string;         // 가맹점 거래번호 (40자)
+  productName: string;     // 상품명 (50자)
+  amount: number;          // 총 결제 금액 (10자)
+  siteUrl: string;         // 가맹점 사이트 URL (20자)
+  okUrl: string;           // 결제(인증) 결과 처리 URL (128자)
+  
+  // 선택적 필드 (N)
+  cashCode?: string;       // 결제 수단 (2자): CN(카드), VA(가상계좌), AC(계좌이체), HP(휴대폰), GM(상품권)
+  callType?: 'P' | 'S' | 'I'; // 결제창 호출 방식 (4자): P(popup), S(self), I(iframe)
+  hybridPay?: 'Y' | 'N';   // 하이브리드 결제 (1자): Y(인증만), N(인증+승인)
+  notiUrl?: string;        // 결제 결과 노티 URL (128자) - 가상계좌 필수
+  notiEmail?: string;      // 담당자 이메일 (30자)
+  closeUrl?: string;       // 취소 버튼 클릭 redirect URL (128자)
+  failUrl?: string;        // 결제 실패 redirect URL (128자)
+  userId?: string;         // 사용자 ID (50자)
+  userName?: string;       // 사용자 이름 (50자)
+  userEmail?: string;      // 사용자 이메일 (30자)
+  businessNo?: string;     // 사업자번호 (13자)
+  sellerTel?: string;      // 판매자 전화번호 (15자)
+  sellerName?: string;     // 판매자명 (50자)
+  onlyOnce?: 'Y' | 'N';    // 반복결제 설정 (1자): Y(단건), N(다건)
+  timeStamp?: string;      // 유효시간 (14자): yyyymmddhhmmss
+  mstr?: string;           // 가맹점 콜백 변수 (2000자)
+  cpLogo?: 'Y' | 'N';     // 가맹점 로고 표기 (1자): Y/N
+  cssType?: string;        // 결제창 색상 (7자): HTML 색상코드
+  cpUi?: string;          // 가맹점별 UI 설정 (20자)
+  appScheme?: string;     // APP URL Scheme (50자)
 }
 
 // 결제 승인 요청
@@ -100,26 +115,38 @@ export class KGMobilians {
   async registration(request: RegistrationRequest): Promise<RegistrationResponse> {
     try {
       const payload: any = {
-        sid: this.config.sid,
-        trade_id: request.tradeId,
-        product_name: request.productName,
+        // 필수 필드 (Y)
+        sid: this.config.sid,                    // 서비스 ID (12자)
+        trade_id: request.tradeId,               // 가맹점 거래번호 (40자)
+        product_name: request.productName,       // 상품명 (50자)
         amount: {
-          total: request.amount.toString(),
+          total: request.amount.toString(),      // 총 결제 금액 (10자)
         },
-        site_url: this.config.siteUrl,
-        ok_url: request.okUrl,
-        call_type: request.callType || 'P',
-        hybrid_pay: request.hybridPay || 'N',
+        site_url: request.siteUrl,              // 가맹점 사이트 URL (20자)
+        ok_url: request.okUrl,                  // 결제 완료 URL (128자)
       };
 
-      // 선택적 필드 추가
-      if (request.cashCode) payload.cash_code = request.cashCode;
-      if (request.closeUrl) payload.close_url = request.closeUrl;
-      if (request.failUrl) payload.fail_url = request.failUrl;
-      if (request.notiUrl) payload.noti_url = request.notiUrl;
-      if (request.userName) payload.user_name = request.userName;
-      if (request.userEmail) payload.user_email = request.userEmail;
-      if (request.mstr) payload.mstr = request.mstr;
+      // 선택적 필드 (N) - 값이 있을 때만 추가
+      if (request.cashCode) payload.cash_code = request.cashCode;           // 결제 수단 (2자)
+      if (request.callType) payload.call_type = request.callType;          // 결제창 호출 방식 (4자)
+      if (request.hybridPay) payload.hybrid_pay = request.hybridPay;        // 하이브리드 결제 (1자)
+      if (request.notiUrl) payload.noti_url = request.notiUrl;             // 노티 URL (128자)
+      if (request.notiEmail) payload.noti_email = request.notiEmail;       // 담당자 이메일 (30자)
+      if (request.closeUrl) payload.close_url = request.closeUrl;          // 취소 URL (128자)
+      if (request.failUrl) payload.fail_url = request.failUrl;             // 실패 URL (128자)
+      if (request.userId) payload.user_id = request.userId;                // 사용자 ID (50자)
+      if (request.userName) payload.user_name = request.userName;          // 사용자 이름 (50자)
+      if (request.userEmail) payload.user_email = request.userEmail;       // 사용자 이메일 (30자)
+      if (request.businessNo) payload.business_no = request.businessNo;    // 사업자번호 (13자)
+      if (request.sellerTel) payload.seller_tel = request.sellerTel;       // 판매자 전화번호 (15자)
+      if (request.sellerName) payload.seller_name = request.sellerName;     // 판매자명 (50자)
+      if (request.onlyOnce) payload.only_once = request.onlyOnce;           // 반복결제 설정 (1자)
+      if (request.timeStamp) payload.time_stamp = request.timeStamp;        // 유효시간 (14자)
+      if (request.mstr) payload.mstr = request.mstr;                        // 가맹점 콜백 변수 (2000자)
+      if (request.cpLogo) payload.cp_logo = request.cpLogo;                 // 가맹점 로고 (1자)
+      if (request.cssType) payload.css_type = request.cssType;              // 결제창 색상 (7자)
+      if (request.cpUi) payload.cp_ui = request.cpUi;                       // 가맹점별 UI (20자)
+      if (request.appScheme) payload.app_scheme = request.appScheme;       // APP URL Scheme (50자)
 
       console.log('KG모빌리언스 거래 등록 요청:', {
         url: `${this.config.apiUrl}/MUP/api/registration`,
